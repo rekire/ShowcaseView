@@ -24,6 +24,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
+import android.os.Build;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -82,7 +83,11 @@ public class ShowcaseView extends RelativeLayout
         super(context, attrs, defStyle);
 
         ApiUtils apiUtils = new ApiUtils();
-        animationFactory = new AnimatorAnimationFactory();
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            animationFactory = new HoneycombAnimationFactory();
+        } else {
+            animationFactory = new LegacyAnimationFactory();
+        }
         showcaseAreaCalculator = new ShowcaseAreaCalculator();
         shotStateStore = new ShotStateStore(context);
 
@@ -181,11 +186,13 @@ public class ShowcaseView extends RelativeLayout
     }
 
     private void updateBitmap() {
-        if (bitmapBuffer == null || haveBoundsChanged()) {
-            if(bitmapBuffer != null)
-        		bitmapBuffer.recycle();
-            bitmapBuffer = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
-
+        if(bitmapBuffer == null || haveBoundsChanged()) {
+            if(bitmapBuffer != null) {
+                bitmapBuffer.recycle();
+            }
+            if(getMeasuredWidth() > 0 && getMeasuredHeight() > 0) {
+                bitmapBuffer = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+            }
         }
     }
 
