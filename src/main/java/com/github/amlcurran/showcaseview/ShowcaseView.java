@@ -36,6 +36,9 @@ import android.widget.Button;
 import android.widget.RelativeLayout;
 
 import com.github.amlcurran.showcaseview.targets.Target;
+import com.github.amlcurran.showcaseview.targets.ViewTarget;
+
+import java.util.ArrayList;
 
 import static com.github.amlcurran.showcaseview.AnimationFactory.AnimationEndListener;
 import static com.github.amlcurran.showcaseview.AnimationFactory.AnimationStartListener;
@@ -61,9 +64,7 @@ public class ShowcaseView extends RelativeLayout
     private float scaleMultiplier = 1f;
 
     // Touch items
-    private boolean hasCustomClickListener = false;
     private boolean blockTouches = true;
-    private boolean hideOnTouch = false;
     private OnShowcaseEventListener mEventListener = OnShowcaseEventListener.NONE;
 
     private boolean hasAlteredText = false;
@@ -75,11 +76,13 @@ public class ShowcaseView extends RelativeLayout
     private long fadeInMillis;
     private long fadeOutMillis;
 
-    protected ShowcaseView(Context context, boolean newStyle) {
-        this(context, null, R.styleable.CustomTheme_showcaseViewStyle, newStyle);
+    private ShowcaseStep currentStep = new ShowcaseStep();
+
+    protected ShowcaseView(Context context) {
+        this(context, null, R.styleable.CustomTheme_showcaseViewStyle);
     }
 
-    protected ShowcaseView(Context context, AttributeSet attrs, int defStyle, boolean newStyle) {
+    protected ShowcaseView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
 
         ApiUtils apiUtils = new ApiUtils();
@@ -105,11 +108,8 @@ public class ShowcaseView extends RelativeLayout
         fadeOutMillis = getResources().getInteger(android.R.integer.config_mediumAnimTime);
 
         mEndButton = (Button) LayoutInflater.from(context).inflate(R.layout.showcase_button, null);
-        if (newStyle) {
-            showcaseDrawer = new NewShowcaseDrawer(getResources());
-        } else {
-            showcaseDrawer = new StandardShowcaseDrawer(getResources());
-        }
+        //showcaseDrawer = new StandardShowcaseDrawer(getResources());
+        showcaseDrawer = new NewShowcaseDrawer(getResources());
         textDrawer = new TextDrawer(getResources(), showcaseAreaCalculator, getContext());
 
         updateStyle(styled, false);
@@ -129,9 +129,12 @@ public class ShowcaseView extends RelativeLayout
             lps.setMargins(margin, margin, margin, margin);
             mEndButton.setLayoutParams(lps);
             mEndButton.setText(android.R.string.ok);
-            if (!hasCustomClickListener) {
-                mEndButton.setOnClickListener(this);
-            }
+            mEndButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    currentStep.onCancelButtonClick(ShowcaseView.this);
+                }
+            });
             addView(mEndButton);
         }
 
@@ -221,21 +224,6 @@ public class ShowcaseView extends RelativeLayout
         return showcaseY;
     }
 
-    /**
-     * Override the standard button click event
-     *
-     * @param listener Listener to listen to on click events
-     */
-    public void overrideButtonClick(OnClickListener listener) {
-        if (shotStateStore.hasShot()) {
-            return;
-        }
-        if (mEndButton != null) {
-            mEndButton.setOnClickListener(listener != null ? listener : this);
-        }
-        hasCustomClickListener = true;
-    }
-
     public void setOnShowcaseEventListener(OnShowcaseEventListener listener) {
         if (listener != null) {
             mEventListener = listener;
@@ -272,7 +260,7 @@ public class ShowcaseView extends RelativeLayout
         showcaseDrawer.erase(bitmapBuffer);
 
         // Draw the showcase drawable
-        if (!hasNoTarget) {
+        if (!hasNoTarget && bitmapBuffer != null) {
             showcaseDrawer.drawShowcase(bitmapBuffer, showcaseX, showcaseY, scaleMultiplier);
             showcaseDrawer.drawToCanvas(canvas, bitmapBuffer);
         }
@@ -338,8 +326,8 @@ public class ShowcaseView extends RelativeLayout
         double distanceFromFocus = Math.sqrt(Math.pow(xDelta, 2) + Math.pow(yDelta, 2));
 
         if (MotionEvent.ACTION_UP == motionEvent.getAction() &&
-                hideOnTouch && distanceFromFocus > showcaseDrawer.getBlockedRadius()) {
-            this.hide();
+                distanceFromFocus > showcaseDrawer.getBlockedRadius()) {
+            currentStep.onClickOutside(this);
             return true;
         }
 
@@ -391,18 +379,29 @@ public class ShowcaseView extends RelativeLayout
      * It is recommended that you use this Builder class.
      */
     public static class Builder {
-
+        private int step = 0;
+        private ArrayList<ShowcaseStep> steps = new ArrayList<ShowcaseStep>();
+        private ShowcaseStep.OnNextStepListener stepListener = new ShowcaseStep.OnNextStepListener() {
+            @Override
+            public void nextStep() {
+                if(step < steps.size() - 1) {
+                    steps.get(++step).showStep(showcaseView, false);
+                } else {
+                    showcaseView.hide();
+                }
+            }
+        };
         final ShowcaseView showcaseView;
         private final Activity activity;
 
         public Builder(Activity activity) {
-            this(activity, false);
+            this.activity = activity;
+            this.showcaseView = new ShowcaseView(activity);
+            this.showcaseView.setTarget(Target.NONE);
         }
 
-        public Builder(Activity activity, boolean useNewStyle) {
-            this.activity = activity;
-            this.showcaseView = new ShowcaseView(activity, useNewStyle);
-            this.showcaseView.setTarget(Target.NONE);
+        public StepBuilder createStep() {
+            return new StepBuilder(this);
         }
 
         /**
@@ -411,6 +410,10 @@ public class ShowcaseView extends RelativeLayout
          * @return the created ShowcaseView
          */
         public ShowcaseView build() {
+            if(!steps.isEmpty()) {
+                showcaseView.currentStep = steps.get(0);
+                showcaseView.currentStep.showStep(showcaseView, true);
+            }
             insertShowcaseView(showcaseView, activity);
             return showcaseView;
         }
@@ -465,16 +468,6 @@ public class ShowcaseView extends RelativeLayout
         }
 
         /**
-         * Set a listener which will override the button clicks.
-         * <p/>
-         * Note that you will have to manually hide the ShowcaseView
-         */
-        public Builder setOnClickListener(OnClickListener onClickListener) {
-            showcaseView.overrideButtonClick(onClickListener);
-            return this;
-        }
-
-        /**
          * Don't make the ShowcaseView block touches on itself. This doesn't
          * block touches in the showcased area.
          * <p/>
@@ -482,18 +475,6 @@ public class ShowcaseView extends RelativeLayout
          */
         public Builder doNotBlockTouches() {
             showcaseView.setBlocksTouches(false);
-            return this;
-        }
-
-        /**
-         * Make this ShowcaseView hide when the user touches outside the showcased area.
-         * This enables {@link #doNotBlockTouches()} as well.
-         * <p/>
-         * By default, the ShowcaseView doesn't hide on touch.
-         */
-        public Builder hideOnTouchOutside() {
-            showcaseView.setBlocksTouches(true);
-            showcaseView.setHideOnTouchOutside(true);
             return this;
         }
 
@@ -510,6 +491,63 @@ public class ShowcaseView extends RelativeLayout
 
         public Builder setShowcaseEventListener(OnShowcaseEventListener showcaseEventListener) {
             showcaseView.setOnShowcaseEventListener(showcaseEventListener);
+            return this;
+        }
+
+        private String getString(int resId) {
+            return showcaseView.getResources().getString(resId);
+        }
+
+        private void addStep(ShowcaseStep step) {
+            step.setNextStepListener(stepListener);
+            steps.add(step);
+        }
+    }
+
+    public static class StepBuilder extends ShowcaseStep {
+        private Builder parent;
+
+        private StepBuilder(Builder parent) {
+            this.parent=parent;
+        }
+
+        public StepBuilder setTitle(int stringId) {
+            this.title = parent.getString(stringId);
+            return this;
+        }
+
+        public StepBuilder setTitle(String title) {
+            this.title = title;
+            return this;
+        }
+
+        public StepBuilder setMessage(String message) {
+            this.message = message;
+            return this;
+        }
+
+        public StepBuilder setMessage(int stringId) {
+            this.message = parent.getString(stringId);
+            return this;
+        }
+
+        public StepBuilder setTarget(ViewTarget view) {
+            this.target = view;
+            return this;
+        }
+
+        public Builder addThisStep() {
+            parent.addStep(this);
+            return parent;
+        }
+
+        public StepBuilder createNextStep() {
+            parent.addStep(this);
+            return new StepBuilder(parent);
+        }
+
+        public StepBuilder enableClickOutsideToSkip() {
+            this.clickToSkip = true;
             return this;
         }
     }
@@ -546,13 +584,6 @@ public class ShowcaseView extends RelativeLayout
     private void setFadeDurations(long fadeInMillis, long fadeOutMillis) {
         this.fadeInMillis = fadeInMillis;
         this.fadeOutMillis = fadeOutMillis;
-    }
-
-    /**
-     * @see com.github.amlcurran.showcaseview.ShowcaseView.Builder#hideOnTouchOutside()
-     */
-    public void setHideOnTouchOutside(boolean hideOnTouch) {
-        this.hideOnTouch = hideOnTouch;
     }
 
     /**
