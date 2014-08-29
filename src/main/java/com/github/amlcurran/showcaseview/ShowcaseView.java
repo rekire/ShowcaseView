@@ -24,7 +24,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
+import android.graphics.RectF;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -49,7 +51,7 @@ import static com.github.amlcurran.showcaseview.AnimationFactory.AnimationStartL
 public class ShowcaseView extends RelativeLayout
         implements View.OnClickListener, View.OnTouchListener, ViewTreeObserver.OnPreDrawListener, ViewTreeObserver.OnGlobalLayoutListener {
 
-    private static final int HOLO_BLUE = Color.parseColor("#33B5E5");
+    private static final int HOLO_BLUE = 0xff33B5E5;
 
     private final Button mEndButton;
     private final TextDrawer textDrawer;
@@ -57,11 +59,6 @@ public class ShowcaseView extends RelativeLayout
     private final ShowcaseAreaCalculator showcaseAreaCalculator;
     private final AnimationFactory animationFactory;
     private final ShotStateStore shotStateStore;
-
-    // Showcase metrics
-    private int showcaseX = -1;
-    private int showcaseY = -1;
-    private float scaleMultiplier = 1f;
 
     // Touch items
     private boolean blockTouches = true;
@@ -77,6 +74,9 @@ public class ShowcaseView extends RelativeLayout
     private long fadeOutMillis;
 
     private ShowcaseStep currentStep = new ShowcaseStep();
+    private Target target;
+    private float animationProgress = 0;
+    private RectF start = null;
 
     protected ShowcaseView(Context context) {
         this(context, null, R.styleable.CustomTheme_showcaseViewStyle);
@@ -109,7 +109,7 @@ public class ShowcaseView extends RelativeLayout
 
         mEndButton = (Button) LayoutInflater.from(context).inflate(R.layout.showcase_button, null);
         //showcaseDrawer = new StandardShowcaseDrawer(getResources());
-        showcaseDrawer = new NewShowcaseDrawer(getResources());
+        showcaseDrawer = new FancyShowcaseDrawer(getResources());
         textDrawer = new TextDrawer(getResources(), showcaseAreaCalculator, getContext());
 
         updateStyle(styled, false);
@@ -140,35 +140,18 @@ public class ShowcaseView extends RelativeLayout
 
     }
 
-    private boolean hasShot() {
-        return shotStateStore.hasShot();
-    }
-
-    void setShowcasePosition(Point point) {
-        setShowcasePosition(point.x, point.y);
-    }
-
-    void setShowcasePosition(int x, int y) {
-        if (shotStateStore.hasShot()) {
-            return;
-        }
-        showcaseX = x;
-        showcaseY = y;
-        //init();
-        invalidate();
-    }
-
     public void setTarget(final Target target) {
         setShowcase(target, false);
     }
 
     public void setShowcase(final Target target, final boolean animate) {
+        if(this.target != null) {
+            this.start = this.target.getRect();
+        }
+        this.target = target;
         postDelayed(new Runnable() {
             @Override
             public void run() {
-
-                if (!shotStateStore.hasShot()) {
-
                     updateBitmap();
                     Point targetPoint = target.getPoint();
                     if (targetPoint != null) {
@@ -176,15 +159,14 @@ public class ShowcaseView extends RelativeLayout
                         if (animate) {
                             animationFactory.animateTargetToPoint(ShowcaseView.this, targetPoint);
                         } else {
+                            // TODO check if this call here is important
                             setShowcasePosition(targetPoint);
                         }
                     } else {
                         hasNoTarget = true;
                         invalidate();
                     }
-
                 }
-            }
         }, 100);
     }
 
@@ -204,24 +186,18 @@ public class ShowcaseView extends RelativeLayout
                 getMeasuredHeight() != bitmapBuffer.getHeight();
     }
 
-    public boolean hasShowcaseView() {
-        return (showcaseX != 1000000 && showcaseY != 1000000) && !hasNoTarget;
+    // this setters and getters are required for animation
+    void setShowcasePosition(Point point) {
+        invalidate();
     }
 
-    public void setShowcaseX(int x) {
-        setShowcasePosition(x, showcaseY);
+    public void setProgress(float progress) {
+        animationProgress = progress;
+        invalidate();
     }
 
-    public void setShowcaseY(int y) {
-        setShowcasePosition(showcaseX, y);
-    }
-
-    public int getShowcaseX() {
-        return showcaseX;
-    }
-
-    public int getShowcaseY() {
-        return showcaseY;
+    public float getProgress() {
+        return animationProgress;
     }
 
     public void setOnShowcaseEventListener(OnShowcaseEventListener listener) {
@@ -240,18 +216,24 @@ public class ShowcaseView extends RelativeLayout
 
     @Override
     public boolean onPreDraw() {
-        boolean recalculatedCling = showcaseAreaCalculator.calculateShowcaseRect(showcaseX, showcaseY, showcaseDrawer);
+        boolean recalculatedCling = showcaseAreaCalculator.calculateShowcaseRect(target.getPoint(), showcaseDrawer);
         boolean recalculateText = recalculatedCling || hasAlteredText;
-        if (recalculateText) {
-            textDrawer.calculateTextPosition(getMeasuredWidth(), getMeasuredHeight(), this, shouldCentreText);
+        if(getMeasuredWidth() == 0 || getMeasuredHeight() == 0) {
+            hasAlteredText = true;
+            invalidate();
+        } else {
+            if(recalculateText) {
+                textDrawer.calculateTextPosition(getMeasuredWidth(), getMeasuredHeight(), this, shouldCentreText);
+            }
+            hasAlteredText = false;
         }
-        hasAlteredText = false;
         return true;
     }
 
     @Override
-    protected void dispatchDraw(Canvas canvas) {
-        if (showcaseX < 0 || showcaseY < 0 || shotStateStore.hasShot()) {
+    protected void dispatchDraw(@NonNull Canvas canvas) {
+        // TODO check if this old check is necessary: showcaseX < 0 || showcaseY < 0 ||
+        if (shotStateStore.hasShot()) {
             super.dispatchDraw(canvas);
             return;
         }
@@ -261,7 +243,7 @@ public class ShowcaseView extends RelativeLayout
 
         // Draw the showcase drawable
         if (!hasNoTarget && bitmapBuffer != null) {
-            showcaseDrawer.drawShowcase(bitmapBuffer, showcaseX, showcaseY, scaleMultiplier);
+            showcaseDrawer.drawShowcase(bitmapBuffer, start, target.getRect(), animationProgress);
             showcaseDrawer.drawToCanvas(canvas, bitmapBuffer);
         }
 
@@ -321,26 +303,19 @@ public class ShowcaseView extends RelativeLayout
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
 
-        float xDelta = Math.abs(motionEvent.getRawX() - showcaseX);
-        float yDelta = Math.abs(motionEvent.getRawY() - showcaseY);
-        double distanceFromFocus = Math.sqrt(Math.pow(xDelta, 2) + Math.pow(yDelta, 2));
 
-        if (MotionEvent.ACTION_UP == motionEvent.getAction() &&
-                distanceFromFocus > showcaseDrawer.getBlockedRadius()) {
+        boolean block = showcaseDrawer.shouldBeenBlocked((int)motionEvent.getRawX(), (int)motionEvent.getRawY());
+        if (MotionEvent.ACTION_UP == motionEvent.getAction() && block) {
             currentStep.onClickOutside(this);
             return true;
         }
 
-        return blockTouches && distanceFromFocus > showcaseDrawer.getBlockedRadius();
+        return blockTouches && block;
     }
 
     private static void insertShowcaseView(ShowcaseView showcaseView, Activity activity) {
         ((ViewGroup) activity.getWindow().getDecorView()).addView(showcaseView);
-        if (!showcaseView.hasShot()) {
             showcaseView.show();
-        } else {
-            showcaseView.hideImmediate();
-        }
     }
 
     private void hideImmediate() {
@@ -353,10 +328,6 @@ public class ShowcaseView extends RelativeLayout
 
     public void setContentText(CharSequence text) {
         textDrawer.setContentText(text);
-    }
-
-    private void setScaleMultiplier(float scaleMultiplier) {
-        this.scaleMultiplier = scaleMultiplier;
     }
 
     @Override
@@ -411,6 +382,7 @@ public class ShowcaseView extends RelativeLayout
          */
         public ShowcaseView build() {
             if(!steps.isEmpty()) {
+                showcaseView.currentStep.onStepGone(showcaseView);
                 showcaseView.currentStep = steps.get(0);
                 showcaseView.currentStep.showStep(showcaseView, true);
             }

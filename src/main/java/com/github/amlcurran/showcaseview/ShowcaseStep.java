@@ -33,11 +33,14 @@ public class ShowcaseStep {
         showcaseView.setShowcase(target, !isFirst);
         showcaseView.setContentTitle(title);
         showcaseView.setContentText(message);
-        //onPostShowStep(showcaseView);
+        onStepVisible(showcaseView);
     }
 
-    //protected void onPostShowStep(ShowcaseView showcaseView) {
-    //}
+    protected void onStepVisible(ShowcaseView showcaseView) {
+    }
+
+    protected void onStepGone(ShowcaseView showcaseView) {
+    }
 
     public final void setNextStepListener(OnNextStepListener listener) {
         this.listener = listener;

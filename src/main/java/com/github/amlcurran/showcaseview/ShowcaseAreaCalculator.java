@@ -16,6 +16,7 @@
 
 package com.github.amlcurran.showcaseview;
 
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -57,4 +58,7 @@ class ShowcaseAreaCalculator {
         return mShowcaseRect;
     }
 
+    public boolean calculateShowcaseRect(Point point, ShowcaseDrawer showcaseDrawer) {
+        return calculateShowcaseRect(point.x, point.y, showcaseDrawer);
+    }
 }

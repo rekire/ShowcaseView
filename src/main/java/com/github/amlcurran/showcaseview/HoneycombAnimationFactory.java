@@ -17,7 +17,6 @@
 package com.github.amlcurran.showcaseview;
 
 import android.animation.Animator;
-import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.annotation.TargetApi;
 import android.graphics.Point;
@@ -27,7 +26,6 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 
 @TargetApi(Build.VERSION_CODES.HONEYCOMB)
 class HoneycombAnimationFactory implements AnimationFactory {
-
     private static final String ALPHA = "alpha";
     private static final float INVISIBLE = 0f;
     private static final float VISIBLE = 1f;
@@ -88,12 +86,8 @@ class HoneycombAnimationFactory implements AnimationFactory {
 
     @Override
     public void animateTargetToPoint(ShowcaseView showcaseView, Point point) {
-        AnimatorSet set = new AnimatorSet();
-        ObjectAnimator xAnimator = ObjectAnimator.ofInt(showcaseView, "showcaseX", point.x);
-        ObjectAnimator yAnimator = ObjectAnimator.ofInt(showcaseView, "showcaseY", point.y);
-        set.playTogether(xAnimator, yAnimator);
-        set.setInterpolator(interpolator);
-        set.start();
+        ObjectAnimator animator = ObjectAnimator.ofFloat(showcaseView, "progress", 1);
+        animator.setInterpolator(interpolator);
+        animator.start();
     }
-
 }

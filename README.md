@@ -7,9 +7,12 @@ for you. Please use the original project located at https://github.com/amlcurran
 My Changes
 ----
 
-- Added Gingerbread compatibility
+- Added Gingerbread compatibility (using [NineOldAndroids](https://github.com/JakeWharton/NineOldAndroids))
 - Added multiple steps for a Showcase with an extended `Builder` and new `ShowcaseStep`s
 - Removed `hideOnTouchOutside()` I moved that logic to the `ShowcaseStep` which can handle now that
+- Removed unused resources and strings which comes with the Android SDK
+- Using now circles for square views and rounded rectangles for other views
+- Fixed lot of issues related with Gingerbread
 
 Copyright and Licensing
 ----

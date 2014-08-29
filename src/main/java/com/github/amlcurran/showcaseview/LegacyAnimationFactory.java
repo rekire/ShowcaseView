@@ -9,11 +9,9 @@ import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 
 import com.nineoldandroids.animation.Animator;
-import com.nineoldandroids.animation.AnimatorSet;
 import com.nineoldandroids.animation.ObjectAnimator;
 
 class LegacyAnimationFactory implements AnimationFactory {
-
     private static final String ALPHA = "alpha";
     private static final float INVISIBLE = 0f;
     private static final float VISIBLE = 1f;
@@ -74,12 +72,8 @@ class LegacyAnimationFactory implements AnimationFactory {
 
     @Override
     public void animateTargetToPoint(ShowcaseView showcaseView, Point point) {
-        AnimatorSet set = new AnimatorSet();
-        ObjectAnimator xAnimator = ObjectAnimator.ofInt(showcaseView, "showcaseX", point.x);
-        ObjectAnimator yAnimator = ObjectAnimator.ofInt(showcaseView, "showcaseY", point.y);
-        set.playTogether(xAnimator, yAnimator);
-        set.setInterpolator(interpolator);
-        set.start();
+        ObjectAnimator animator = ObjectAnimator.ofFloat(showcaseView, "progress", 1);
+        animator.setInterpolator(interpolator);
+        animator.start();
     }
-
 }

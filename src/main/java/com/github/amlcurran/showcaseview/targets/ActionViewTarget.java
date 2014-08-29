@@ -18,6 +18,7 @@ package com.github.amlcurran.showcaseview.targets;
 
 import android.app.Activity;
 import android.graphics.Point;
+import android.graphics.RectF;
 import android.view.ViewParent;
 
 public class ActionViewTarget implements Target {
@@ -41,32 +42,29 @@ public class ActionViewTarget implements Target {
 
     @Override
     public Point getPoint() {
-        Target internal = null;
+        return getView().getPoint();
+    }
+
+    private ViewTarget getView() {
         setUp();
         switch (mType) {
-
-            case SPINNER:
-                internal = new ViewTarget(mActionBarWrapper.getSpinnerView());
-                break;
-
-            case HOME:
-                internal = new ViewTarget(mReflector.getHomeButton());
-                break;
-
-            case OVERFLOW:
-                internal = new ViewTarget(mActionBarWrapper.getOverflowView());
-                break;
-
-            case TITLE:
-                internal = new ViewTarget(mActionBarWrapper.getTitleView());
-                break;
-                
-            case MEDIA_ROUTE_BUTTON:
-                internal = new ViewTarget(mActionBarWrapper.getMediaRouterButtonView());
-                break;
-
+        case SPINNER:
+            return new ViewTarget(mActionBarWrapper.getSpinnerView());
+        case HOME:
+            return new ViewTarget(mReflector.getHomeButton());
+        case OVERFLOW:
+            return new ViewTarget(mActionBarWrapper.getOverflowView());
+        case TITLE:
+            return new ViewTarget(mActionBarWrapper.getTitleView());
+        case MEDIA_ROUTE_BUTTON:
+            return new ViewTarget(mActionBarWrapper.getMediaRouterButtonView());
         }
-        return internal.getPoint();
+        return null;
+    }
+
+    @Override
+    public RectF getRect() {
+        return getView().getRect();
     }
 
     public enum Type {

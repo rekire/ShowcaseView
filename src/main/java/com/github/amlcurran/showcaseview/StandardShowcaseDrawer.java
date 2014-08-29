@@ -20,20 +20,22 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 
 /**
  * Created by curraa01 on 13/10/2013.
  */
 class StandardShowcaseDrawer implements ShowcaseDrawer {
-
     protected final Paint eraserPaint;
     protected final Drawable showcaseDrawable;
     private final Paint basicPaint;
     private final float showcaseRadius;
     protected int backgroundColour;
+    protected Point target;
 
     public StandardShowcaseDrawer(Resources resources) {
         PorterDuffXfermode xfermode = new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY);
@@ -53,13 +55,17 @@ class StandardShowcaseDrawer implements ShowcaseDrawer {
     }
 
     @Override
-    public void drawShowcase(Bitmap buffer, float x, float y, float scaleMultiplier) {
+    public void drawShowcase(Bitmap buffer, RectF start, RectF end, float progress) {
         Canvas bufferCanvas = new Canvas(buffer);
-        bufferCanvas.drawCircle(x, y, showcaseRadius, eraserPaint);
+        target = new Point(
+                (int)(end.right - (end.right - end.left) / 2),
+                (int)(end.bottom - (end.bottom - end.top) / 2)
+        );
+        bufferCanvas.drawCircle(target.x, target.y, showcaseRadius, eraserPaint);
         int halfW = getShowcaseWidth() / 2;
         int halfH = getShowcaseHeight() / 2;
-        int left = (int) (x - halfW);
-        int top = (int) (y - halfH);
+        int left = target.x - halfW;
+        int top = target.y - halfH;
         showcaseDrawable.setBounds(left, top,
                 left + getShowcaseWidth(),
                 top + getShowcaseHeight());
@@ -77,8 +83,12 @@ class StandardShowcaseDrawer implements ShowcaseDrawer {
     }
 
     @Override
-    public float getBlockedRadius() {
-        return showcaseRadius;
+    public boolean shouldBeenBlocked(int x, int y) {
+        // if square
+        float xDelta = Math.abs(x - target.x);
+        float yDelta = Math.abs(y - target.y);
+        double distanceFromFocus = Math.sqrt(Math.pow(xDelta, 2) + Math.pow(yDelta, 2));
+        return distanceFromFocus > showcaseRadius;
     }
 
     @Override
@@ -97,5 +107,4 @@ class StandardShowcaseDrawer implements ShowcaseDrawer {
     public void drawToCanvas(Canvas canvas, Bitmap bitmapBuffer) {
         canvas.drawBitmap(bitmapBuffer, 0, 0, basicPaint);
     }
-
 }

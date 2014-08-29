@@ -18,6 +18,7 @@ package com.github.amlcurran.showcaseview.targets;
 
 import android.app.Activity;
 import android.graphics.Point;
+import android.graphics.RectF;
 import android.view.ViewParent;
 
 /**
@@ -42,6 +43,11 @@ public class ActionItemTarget implements Target {
     public Point getPoint() {
         setUp();
         return new ViewTarget(mActionBarWrapper.getActionItem(mItemId)).getPoint();
+    }
+
+    @Override
+    public RectF getRect() {
+        return new ViewTarget(mActionBarWrapper.getActionItem(mItemId)).getRect();
     }
 
     protected void setUp() {

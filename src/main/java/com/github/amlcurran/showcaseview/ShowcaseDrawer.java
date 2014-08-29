@@ -18,6 +18,7 @@ package com.github.amlcurran.showcaseview;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.RectF;
 
 /**
  * Created by curraa01 on 13/10/2013.
@@ -26,13 +27,13 @@ interface ShowcaseDrawer {
 
     void setShowcaseColour(int color);
 
-    void drawShowcase(Bitmap buffer, float x, float y, float scaleMultiplier);
+    void drawShowcase(Bitmap buffer, RectF start, RectF end, float progress);
 
     int getShowcaseWidth();
 
     int getShowcaseHeight();
 
-    float getBlockedRadius();
+    boolean shouldBeenBlocked(int x, int y);
 
     void setBackgroundColour(int backgroundColor);
 

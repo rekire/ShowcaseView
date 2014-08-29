@@ -18,6 +18,8 @@ package com.github.amlcurran.showcaseview.targets;
 
 import android.app.Activity;
 import android.graphics.Point;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.view.View;
 
 /**
@@ -42,5 +44,12 @@ public class ViewTarget implements Target {
         int x = location[0] + mView.getWidth() / 2;
         int y = location[1] + mView.getHeight() / 2;
         return new Point(x, y);
+    }
+
+    @Override
+    public RectF getRect() {
+        Rect pos = new Rect();
+        mView.getGlobalVisibleRect(pos);
+        return new RectF(pos);
     }
 }
