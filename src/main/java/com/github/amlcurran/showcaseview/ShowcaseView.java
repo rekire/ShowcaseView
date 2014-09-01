@@ -470,9 +470,10 @@ public class ShowcaseView extends RelativeLayout
             return showcaseView.getResources().getString(resId);
         }
 
-        private void addStep(ShowcaseStep step) {
+        public Builder addStep(ShowcaseStep step) {
             step.setNextStepListener(stepListener);
             steps.add(step);
+            return this;
         }
     }
 
