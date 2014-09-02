@@ -21,12 +21,14 @@ public class ShowcaseStep {
 
     public void onClickOutside(ShowcaseView showcaseView) {
         if(clickToSkip && listener != null) {
+            onStepGone(showcaseView);
             listener.nextStep();
         }
     }
 
     public void onCancelButtonClick(ShowcaseView showcaseView) {
         showcaseView.hide();
+        onStepGone(showcaseView);
     }
 
     public final void showStep(ShowcaseView showcaseView, boolean isFirst) {

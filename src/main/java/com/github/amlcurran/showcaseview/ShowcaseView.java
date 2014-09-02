@@ -49,7 +49,8 @@ import static com.github.amlcurran.showcaseview.AnimationFactory.AnimationStartL
  * A view which allows you to showcase areas of your app with an explanation.
  */
 public class ShowcaseView extends RelativeLayout
-        implements View.OnClickListener, View.OnTouchListener, ViewTreeObserver.OnPreDrawListener, ViewTreeObserver.OnGlobalLayoutListener {
+        implements View.OnClickListener, View.OnTouchListener, ViewTreeObserver.OnPreDrawListener,
+        ViewTreeObserver.OnGlobalLayoutListener, ShowcaseStep.OnNextStepListener {
 
     private static final int HOLO_BLUE = 0xff33B5E5;
 
@@ -77,6 +78,10 @@ public class ShowcaseView extends RelativeLayout
     private Target target;
     private float animationProgress = 0;
     private RectF start = null;
+
+    // possible steps
+    private int step = 0;
+    private ArrayList<ShowcaseStep> steps = new ArrayList<ShowcaseStep>();
 
     protected ShowcaseView(Context context) {
         this(context, null, R.styleable.CustomTheme_showcaseViewStyle);
@@ -345,23 +350,21 @@ public class ShowcaseView extends RelativeLayout
         mEndButton.setVisibility(VISIBLE);
     }
 
+    @Override
+    public void nextStep() {
+        if(step < steps.size() - 1) {
+            currentStep = steps.get(++step);
+            currentStep.showStep(this, currentStep.target == null);
+        } else {
+            hide();
+        }
+    }
+
     /**
      * Builder class which allows easier creation of {@link ShowcaseView}s.
      * It is recommended that you use this Builder class.
      */
     public static class Builder {
-        private int step = 0;
-        private ArrayList<ShowcaseStep> steps = new ArrayList<ShowcaseStep>();
-        private ShowcaseStep.OnNextStepListener stepListener = new ShowcaseStep.OnNextStepListener() {
-            @Override
-            public void nextStep() {
-                if(step < steps.size() - 1) {
-                    steps.get(++step).showStep(showcaseView, false);
-                } else {
-                    showcaseView.hide();
-                }
-            }
-        };
         final ShowcaseView showcaseView;
         private final Activity activity;
 
@@ -381,9 +384,9 @@ public class ShowcaseView extends RelativeLayout
          * @return the created ShowcaseView
          */
         public ShowcaseView build() {
-            if(!steps.isEmpty()) {
+            if(!showcaseView.steps.isEmpty()) {
                 showcaseView.currentStep.onStepGone(showcaseView);
-                showcaseView.currentStep = steps.get(0);
+                showcaseView.currentStep = showcaseView.steps.get(0);
                 showcaseView.currentStep.showStep(showcaseView, true);
             }
             insertShowcaseView(showcaseView, activity);
@@ -471,8 +474,8 @@ public class ShowcaseView extends RelativeLayout
         }
 
         public Builder addStep(ShowcaseStep step) {
-            step.setNextStepListener(stepListener);
-            steps.add(step);
+            step.setNextStepListener(showcaseView);
+            showcaseView.steps.add(step);
             return this;
         }
     }
